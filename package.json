@@ -1,0 +1,16 @@
+{
+  "name": "wsdl",
+  "version": "1.0.0",
+  "description": "wsdl checkpasswd service",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "logger": "^1.1.0",
+    "rsvp": "^3.0.17",
+    "soap": "^0.8.0"
+  }
+}

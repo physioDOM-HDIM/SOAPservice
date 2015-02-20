@@ -1,0 +1,1 @@
+npm install ../HHR-Pro/install/logger-v1.1.0.tar.gz -S

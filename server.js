@@ -4,7 +4,8 @@ var http = require("http"),
     Logger = require("logger");
 
 var logger = new Logger("WSDL service");
-	
+var serverIP = "http://192.168.1.31:8010";
+
 var CheckPassword = {
 	loginservice: {
 		loginserviceSOAP: {
@@ -35,7 +36,7 @@ var CheckPassword = {
 				} else {
 					CheckPasswordOut.isValid = false;
 				}
-				return CheckPasswordOut;
+				return CheckPasswordOut; 
 			}
 		}
 	}
@@ -44,7 +45,7 @@ var CheckPassword = {
 function test1( ) {
 	console.log( "test1" );
 	return new promise( function( resolve, reject) {
-		soap.createClient('http://127.0.0.1:8010/wsdl?wsdl', function(err, client) {
+		soap.createClient(serverIP+'/wsdl?wsdl', function(err, client) {
 			client.CheckPassword({ Authentifier: 'login', OrganizationUnit:"User", Password:"password" }, function(err, result) {
 				if( err ) {
 					reject(err);
@@ -60,7 +61,7 @@ function test1( ) {
 function test3( ) {
 	console.log( "test3" );
 	return new promise( function( resolve, reject) {
-		soap.createClient('http://127.0.0.1:8010/wsdl?wsdl', function(err, client) {
+		soap.createClient(serverIP+'/wsdl?wsdl', function(err, client) {
 			client.CheckPassword({ OrganizationUnit:"User", Password:"password" }, function(err, result) {
 				if( err ) {
 					reject(err);
@@ -74,7 +75,7 @@ function test3( ) {
 
 function test2( ) {
 	return new promise( function( resolve, reject) {
-		soap.createClient('http://127.0.0.1:8010/wsdl?wsdl', function(err, client) {
+		soap.createClient(serverIP+'/wsdl?wsdl', function(err, client) {
 			if( err ) {
 				reject(err);
 			} else {
@@ -118,6 +119,14 @@ var server = http.createServer(function(req,res) {
 				// res.end("err \n"+JSON.stringify(err,"",4));
 				res.end( err.response.body );
 			});
+	}
+	if( req.method === "GET" && req.url === "/checkpassword.wsdl" ) {
+		logger.trace("get the wsdl file");
+		done = true;
+		res.writeHead(200, {
+			'Content-Length': xml.length,
+			'Content-Type': 'application/xml' });
+		res.end( xml );
 	}
 	if( !done ) {
 		res.end("404: Not Found: "+req.url);

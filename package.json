@@ -4,7 +4,8 @@
   "description": "wsdl checkpasswd service",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "supervisor -w ./ -- server.js 2>&1 > logs/app.log"
   },
   "author": "",
   "license": "ISC",

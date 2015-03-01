@@ -2,7 +2,8 @@ var http = require("http"),
     soap = require("soap"),
     promise = require("rsvp").Promise,
     Logger = require("logger"),
- 	swig  = require('swig');;
+	request = require("request"),
+ 	swig  = require('swig');
 
 var logger = new Logger("WSDL service");
 var serverIP = "10.122.31.126";
@@ -11,10 +12,9 @@ var CheckPassword = {
 	loginservice: {
 		loginserviceSOAP: {
 			CheckPassword: function (CheckPasswordRequest, cb) {
-				var request = CheckPasswordRequest.CheckPasswordRequest;
-				logger.debug("CheckPassword", request);
-
-				if (!request || !request.Authentifier || !request.OrganizationalUnit || !request.Password) {
+				var soapReq = CheckPasswordRequest.CheckPasswordRequest;
+				
+				if (!soapReq || !soapReq.Authentifier || !soapReq.OrganizationalUnit || !soapReq.Password) {
 					logger.error("Requete d'identification invalide");
 					throw {
 						Fault: {
@@ -26,21 +26,49 @@ var CheckPassword = {
 						}
 					};
 				}
+
+				var CheckPasswordOut = {IsValid: false, CheckPasswordUserInfo: ""};
+				
+				function testPasswd( Authentifier, Password ) {
+					return new promise( function(resolve, reject) {
+						request({
+							url    : "http://192.168.1.68/api/checkpasswd",
+							method : "POST",
+							headers: {"content-type": "text/plain"},
+							body   : JSON.stringify({login: Authentifier, password: Password})
+						}, function (err, resp, body) {
+							if (err) {
+								logger.debug("resp checkpasswd err", err);
+								resolve( { valid: false });
+							} else {
+								try {
+									var isvalid = JSON.parse(body);
+									resolve( isvalid );
+								} catch( err ) {
+									resolve( { valid: false });
+								}
+							}
+						});
+					});
+				}
 				
 				var CheckPasswordOut = {IsValid: false, CheckPasswordUserInfo: ""};
 				// @todo valid is a function that validate the user:
-				var valid = true;
-
-				if (valid && request.Password === "test") {
-					logger.info("Authentifier valid", request);
-					CheckPasswordOut.IsValid = true;
-					CheckPasswordOut.CheckPasswordUserInfo = "Authentifier=" + request.Authentifier + ";OrganizationalUnit=" + request.OrganizationalUnit + ";";
-				} else {
-					logger.alert("Authentifier not valid", request);
-					CheckPasswordOut.IsValid = false;
-				}
-				logger.trace( { CheckPasswordResponse: CheckPasswordOut } );
-				return { CheckPasswordResponse: CheckPasswordOut };
+				
+				testPasswd( soapReq.Authentifier, soapReq.Password )
+					.then( function( isvalid ) {
+						var valid = isvalid.valid;
+						if (valid) {
+							logger.info("Authentifier valid", soapReq);
+							CheckPasswordOut.IsValid = true;
+							CheckPasswordOut.CheckPasswordUserInfo = "Authentifier=" + soapReq.Authentifier + ";OrganizationalUnit=" + soapReq.OrganizationalUnit + ";";
+						} else {
+							logger.alert("Authentifier not valid", soapReq);
+							CheckPasswordOut.IsValid = false;
+						}
+						logger.trace( { CheckPasswordResponse: CheckPasswordOut } );
+						cb({ CheckPasswordResponse: CheckPasswordOut });
+					});
 			}
 		}
 	}

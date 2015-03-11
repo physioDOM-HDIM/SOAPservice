@@ -2,8 +2,8 @@ var http = require("http"),
     soap = require("soap"),
     promise = require("rsvp").Promise,
     Logger = require("logger"),
-	request = require("request"),
- 	swig  = require('swig');
+    request = require("request"),
+    swig  = require('swig');
 
 var logger = new Logger("WSDL service");
 var serverIP = "10.122.31.126";

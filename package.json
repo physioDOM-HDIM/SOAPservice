@@ -1,15 +1,25 @@
 {
-  "name": "wsdl",
-  "version": "1.0.0",
-  "description": "wsdl checkpasswd service",
-  "main": "server.js",
+  "name": "SOAPservice",
+  "version": "0.0.14",
+  "description": "wsdl checkpasswd soap service to use with IDS platform",
+  "main": "SOAPservice.js",
   "scripts": {
     "preinstall": "npm install ./logger-v1.1.0.tar.gz",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "supervisor -w ./ -- SOAPservice.js 2>&1 > logs/app.log"
+    "start": "supervisor -w ./ -- SOAPservice.js 2>&1 > logs/SOAPservice.log"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "Telecom Sante <tech@telecomsante.com>",
+  "contributors": [
+    {
+      "name": "Fabrice Le Coz",
+      "email": "fabrice.lecoz@telecomsante.com"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "http://git.telecomsante.com/physiodom-hdim/SOAPservice"
+  },
+  "license": "Telecom Sante",
   "dependencies": {
     "commander": "^2.7.1",
     "logger": "^1.1.0",

@@ -32,7 +32,7 @@ var CheckPassword = {
 				function testPasswd( Authentifier, Password ) {
 					return new promise( function(resolve, reject) {
 						request({
-							url    : "http://192.168.1.68/api/checkpasswd",
+							url    : "http://127.0.0.1:8001/api/checkpasswd",
 							method : "POST",
 							headers: {"content-type": "text/plain"},
 							body   : JSON.stringify({login: Authentifier, password: Password})

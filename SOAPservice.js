@@ -1,12 +1,38 @@
 var http = require("http"),
+	program = require("commander"),
     soap = require("soap"),
     promise = require("rsvp").Promise,
     Logger = require("logger"),
     request = require("request"),
     swig  = require('swig');
 
+var pkg     = require('./package.json');
 var logger = new Logger("WSDL service");
-var serverIP = "10.122.31.126";
+var config = {};
+
+program
+	.version(pkg.version)
+	.usage('[options] [dir]')
+	.option('-c, --config <config>', 'configuration file', String )
+	.parse(process.argv);
+
+if( program.config ) {
+	if( !program.config.match(/^\//) ) {
+		program.config = path.join(__dirname+'/..',program.config );
+	}
+	var tmp = require(program.config);
+	if( !tmp.serverIP ) {
+		logger.error("no serverIP defined");
+		process.exit(1);
+	} else {
+		config.serverIP = tmp.serverIP;
+	}
+} else {
+	logger.error("you must provide a config file");
+	process.exit(1);
+}
+	
+
 
 var CheckPassword = {
 	loginservice: {
@@ -79,7 +105,7 @@ var test = {};
 test.test1 = function() {
 	logger.trace("test1 : get a soap client");
 	return new promise( function( resolve, reject) {
-		soap.createClient("http://"+serverIP+'/wsdl', function(err, client) {
+		soap.createClient("http://"+config.serverIP+'/wsdl', function(err, client) {
 			if( err ) {
 				reject(err);
 			} else {
@@ -92,7 +118,7 @@ test.test1 = function() {
 test.test2 = function() {
 	logger.trace( "test2 : checkpasswd valid" );
 	return new promise( function( resolve, reject) {
-		soap.createClient("http://"+serverIP+'/wsdl', function(err, client) {
+		soap.createClient("http://"+config.serverIP+'/wsdl', function(err, client) {
 			var request = { CheckPasswordRequest:{ Authentifier: '03thomas.jabouley@viveris.fr', OrganizationalUnit:"User", Password:"test" }};
 			client.CheckPassword(request, function(err, result, raw) {
 				if( err ) {
@@ -109,7 +135,7 @@ test.test2 = function() {
 test.test3 = function() {
 	logger.trace( "test3 : checkpasswd not valid" );
 	return new promise( function( resolve, reject) {
-		soap.createClient("http://"+serverIP+'/wsdl', function(err, client) {
+		soap.createClient("http://"+config.serverIP+'/wsdl', function(err, client) {
 			client.CheckPassword({ CheckPasswordRequest:{ OrganizationalUnit:"User", Password:"test" }}, function(err, result) {
 				if( err ) {
 					reject(err);
@@ -124,7 +150,7 @@ test.test3 = function() {
 test.test4 = function() {
 	logger.trace( "test4 : checkpasswd not valid ( bad password )" );
 	return new promise( function( resolve, reject) {
-		soap.createClient("http://"+serverIP+'/wsdl', function(err, client) {
+		soap.createClient("http://"+config.serverIP+'/wsdl', function(err, client) {
 			client.CheckPassword( { CheckPasswordRequest:{ Authentifier: 'thomas.jabouley@viveris.fr', OrganizationalUnit:"User", Password:"test2" }} , function(err, result) {
 				if( err ) {
 					reject(err);
@@ -139,7 +165,7 @@ test.test4 = function() {
 test.test5 = function() {
 	logger.trace( "test2 : checkpasswd valid" );
 	return new promise( function( resolve, reject) {
-		soap.createClient("http://"+serverIP+'/wsdl', function(err, client) {
+		soap.createClient("http://"+config.serverIP+'/wsdl', function(err, client) {
 			client.CheckPassword({ Authentifier: '03thomas.jabouley@viveris.fr', OrganizationalUnit:"User", Password:"test" }, function(err, result) {
 				if( err ) {
 					reject(err);
@@ -151,7 +177,7 @@ test.test5 = function() {
 	});
 };
 
-var xml = require('fs').readFileSync('checkpassword.wsdl', 'utf8');
+var xml = require('fs').readFileSync(__dirname + '/checkpassword.wsdl', 'utf8');
 var server = http.createServer(function(req,res) {
 	logger.trace("request to http server", req.method, req.url );
 	var fn = test[req.url.slice(1)];
@@ -196,11 +222,10 @@ var server = http.createServer(function(req,res) {
 });
 
 server.listen(8010, function() {
-	var pkg = require("./package.json");
 	logger.info("-----------------------------------------------");
 	logger.info("server wsdl v"+pkg.version+" listen on 8010" );
 	logger.info("-----------------------------------------------");
-	var wsdl = swig.render( xml, { locals: { server: serverIP } } );
+	var wsdl = swig.render( xml, { locals: { server: config.serverIP } } );
 	soap.listen(server, '/login', CheckPassword, wsdl);
 });
 

@@ -1,0 +1,56 @@
+#!/bin/bash
+
+### BEGIN INIT INFO
+# Provides:             PhysioDOM SOAP service
+# Required-Start:       $remote_fs
+# Required-Stop:        $remote_fs
+# Default-Start:        2 3 4 5
+# Default-Stop:         0 1 6
+# Short-Description:    PhysioDOM SOAP service
+# Description:          the physioDOM SOAP service is requested by the IDS platforms and check if users exists
+### END INIT INFO
+
+. /lib/lsb/init-functions
+. /etc/environment
+
+PROGDIR="/home/http/SOAPservice"
+PROG="SOAPservice.js"
+LOGDIR="/home/log"
+FOREVER="/usr/local/bin/forever"
+DEBUG=""
+
+if [ ! -d ${LOGDIR} ]
+then
+    install -d ${LOGDIR} -m 755
+fi
+
+case "$1" in
+        start)
+                if ( $FOREVER list | grep -q ${PROGDIR}/${PROG} ) ; then
+                   log_warning_msg "service is already running"
+                   exit 1
+                fi
+                $FOREVER start -a -l ${LOGDIR}/SOAPservice.log \
+                       ${PROGDIR}/${PROG} -c ${PROGDIR}/config.json
+                log_end_msg 0
+                ;;
+        stop)
+                $FOREVER stop ${PROGDIR}/${PROG}
+                log_end_msg 0
+                ;;
+        restart)    
+                $FOREVER restart -a -l ${LOGDIR}/SOAPservice.log \
+                         ${PROGDIR}/${PROG} -c ${PROGDIR}/config.json
+                log_end_msg 0
+                ;;
+        status)
+                if ( $FOREVER list | grep -q ${PROGDIR}/${PROG} ) ; then
+                   log_success_msg "service is running"
+                else
+                   log_warning_msg "service is not running"
+                fi 
+                ;;
+        *)
+                log_success_msg "Usage: /etc/init.d/SOAPservice {start|stop|reload|status}"
+                exit 1
+esac

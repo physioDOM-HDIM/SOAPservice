@@ -5,12 +5,14 @@ var http = require("http"),
     promise = require("rsvp").Promise,
     Logger = require("logger"),
     request = require("request"),
+	Etcd = require("node-etcd"),
     swig  = require('swig');
 
 var pkg     = require('./package.json');
 var logger = new Logger("WSDL service");
 var config = {};
 var HHRPros = {};   // etcd HHRPro registred instances
+var loop = setInterval( getHHRServices, 5000 );
 
 program
 	.version(pkg.version)

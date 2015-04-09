@@ -23,6 +23,7 @@
   "dependencies": {
     "commander": "^2.7.1",
     "logger": "^1.1.0",
+    "node-etcd": "^4.0.1",
     "request": "^2.53.0",
     "rsvp": "^3.0.17",
     "soap": "^0.8.0",

@@ -1,18 +1,23 @@
 var http = require("http"),
 	program = require("commander"),
     soap = require("soap"),
+	RSVP = require("rsvp"),
     promise = require("rsvp").Promise,
     Logger = require("logger"),
     request = require("request"),
+	Etcd = require("node-etcd"),
     swig  = require('swig');
 
 var pkg     = require('./package.json');
 var logger = new Logger("WSDL service");
 var config = {};
+var HHRPros = {};   // etcd HHRPro registred instances
+var loop = setInterval( getHHRServices, 5000 );
 
 program
 	.version(pkg.version)
 	.usage('[options] [dir]')
+	.option('-h, --host [value]','etcd server [172.17.42.1]','172.17.42.1')
 	.option('-c, --config <config>', 'configuration file', String )
 	.parse(process.argv);
 
@@ -31,8 +36,42 @@ if( program.config ) {
 	logger.error("you must provide a config file");
 	process.exit(1);
 }
-	
 
+// the etcd client
+var etcd = new Etcd( program.host, '4001' );
+
+function getHHRServices() {
+	etcd.get('/services', { recursive: true }, function( err, resp ) {
+		if(err) {
+			console.error("error ",err);
+		} else {
+			clearInterval(loop);
+			if( resp.node.nodes ) {
+				resp.node.nodes.forEach( function(node) {
+					if( node.key === "/services/HHR-Pro") {
+						HHRPros[node.nodes[0].key] = JSON.parse(node.nodes[0].value);
+					}
+				});
+			}
+
+			watcher = etcd.watcher("/services", null, { recursive:true} );
+			watcher.on("change", function( action ) {
+				switch( action.action ) {
+					case 'set':
+						if( action.node.key === "/services/HHR-Pro") {
+							HHRPros[action.node.nodes[0].key] = JSON.parse(action.node.nodes[0].value);
+						}
+						break;
+					case 'delete':
+						if( action.node.key === "/services/HHR-Pro") {
+							delete HHRPros[action.node.nodes[0].key];
+						}
+						break;
+				}
+			});
+		}
+	});
+}
 
 var CheckPassword = {
 	loginservice: {
@@ -55,10 +94,10 @@ var CheckPassword = {
 
 				var CheckPasswordOut = {IsValid: false, CheckPasswordUserInfo: ""};
 				
-				function testPasswd( Authentifier, Password ) {
+				function testPasswd( HHRPro, Authentifier, Password ) {
 					return new promise( function(resolve, reject) {
 						request({
-							url    : "http://127.0.0.1:8001/api/checkpasswd",
+							url    : "http://"+HHRPro.dns+"/api/checkpasswd",
 							method : "POST",
 							headers: {"content-type": "text/plain"},
 							body   : JSON.stringify({login: Authentifier, password: Password})
@@ -78,12 +117,23 @@ var CheckPassword = {
 					});
 				}
 				
+				var instances = [];
+				for( var HHRPro in HHRPros ) {
+					instances.push( HHRPros[HHRPro] );
+				}
+				var promises = instances.map(function(HHRPro){
+					return testPasswd(HHRPro, soapReq.Authentifier, soapReq.Password );
+				});
+				
 				var CheckPasswordOut = {IsValid: false, CheckPasswordUserInfo: ""};
 				// @todo valid is a function that validate the user:
 				
-				testPasswd( soapReq.Authentifier, soapReq.Password )
-					.then( function( isvalid ) {
-						var valid = isvalid.valid;
+				RSVP.all( promises )
+					.then( function(results) {
+						var valid = false;
+						for( var i=0; i<results.length; i++ ) {
+							valid = valid || results[i].valid;
+						}
 						if (valid) {
 							logger.info("Authentifier valid", soapReq);
 							CheckPasswordOut.IsValid = true;
@@ -100,108 +150,11 @@ var CheckPassword = {
 	}
 };
 
-var test = {};
-
-test.test1 = function() {
-	logger.trace("test1 : get a soap client");
-	return new promise( function( resolve, reject) {
-		soap.createClient("http://"+config.serverIP+'/wsdl', function(err, client) {
-			if( err ) {
-				reject(err);
-			} else {
-				resolve( client );
-			}
-		});
-	});
-};
-
-test.test2 = function() {
-	logger.trace( "test2 : checkpasswd valid" );
-	return new promise( function( resolve, reject) {
-		soap.createClient("http://"+config.serverIP+'/wsdl', function(err, client) {
-			var request = { CheckPasswordRequest:{ Authentifier: '03thomas.jabouley@viveris.fr', OrganizationalUnit:"User", Password:"test" }};
-			client.CheckPassword(request, function(err, result, raw) {
-				if( err ) {
-					reject(err);
-				} else {
-					console.log(raw);
-					resolve( result );
-				}
-		 	});
-		});
-	});
-};
-
-test.test3 = function() {
-	logger.trace( "test3 : checkpasswd not valid" );
-	return new promise( function( resolve, reject) {
-		soap.createClient("http://"+config.serverIP+'/wsdl', function(err, client) {
-			client.CheckPassword({ CheckPasswordRequest:{ OrganizationalUnit:"User", Password:"test" }}, function(err, result) {
-				if( err ) {
-					reject(err);
-				} else {
-					resolve( result );
-				}
-		 	});
-		});
-	});
-};
-
-test.test4 = function() {
-	logger.trace( "test4 : checkpasswd not valid ( bad password )" );
-	return new promise( function( resolve, reject) {
-		soap.createClient("http://"+config.serverIP+'/wsdl', function(err, client) {
-			client.CheckPassword( { CheckPasswordRequest:{ Authentifier: 'thomas.jabouley@viveris.fr', OrganizationalUnit:"User", Password:"test2" }} , function(err, result) {
-				if( err ) {
-					reject(err);
-				} else {
-					resolve( result );
-				}
-			});
-		});
-	});
-};
-
-test.test5 = function() {
-	logger.trace( "test2 : checkpasswd valid" );
-	return new promise( function( resolve, reject) {
-		soap.createClient("http://"+config.serverIP+'/wsdl', function(err, client) {
-			client.CheckPassword({ Authentifier: '03thomas.jabouley@viveris.fr', OrganizationalUnit:"User", Password:"test" }, function(err, result) {
-				if( err ) {
-					reject(err);
-				} else {
-					resolve( result );
-				}
-			});
-		});
-	});
-};
-
 var xml = require('fs').readFileSync(__dirname + '/checkpassword.wsdl', 'utf8');
 var server = http.createServer(function(req,res) {
 	logger.trace("request to http server", req.method, req.url );
-	var fn = test[req.url.slice(1)];
+	
 	var done = false;
-	if( req.method === "GET" && fn ) {
-		done = true;
-		fn()
-			.then( function( result ) {
-				res.end( JSON.stringify(result,"",4));
-			})
-			.catch( function(err) {
-				if( err.body ) {
-					// var serverName =  req.headers.host === "localhost"?"localhost:1234":req.headers.host;
-					var serverName = req.headers.host;
-					var errXML = swig.render( err.body, { locals: { server: serverName } } );
-					res.writeHead(200, {
-						'Content-Length': errXML.length,
-						'Content-Type': 'application/xml' });
-					res.end( errXML );
-				} else {
-					res.end("err \n" + JSON.stringify(result, "", 4));
-				}
-			});
-	}
 	
 	if( req.method === "GET" && ["/checkpassword.wsdl","/wsdl"].indexOf(req.url) !== -1 ) {
 		logger.trace("get the wsdl file");
@@ -227,5 +180,7 @@ server.listen(8010, function() {
 	logger.info("-----------------------------------------------");
 	var wsdl = swig.render( xml, { locals: { server: config.serverIP } } );
 	soap.listen(server, '/login', CheckPassword, wsdl);
+	// Watch for HHRPro instances
+	getHHRServices();
 });
 

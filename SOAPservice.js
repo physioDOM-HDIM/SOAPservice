@@ -46,9 +46,9 @@ function getHHRServices() {
 			console.error("error ", err);
 		} else {
 			clearInterval(loop);
-			if (resp.node.nodes) {
+			if (resp.node.nodes && resp.node.nodes.length ) {
 				resp.node.nodes.forEach(function (node) {
-					if (node.key === "/services/HHR-Pro") {
+					if (node.key === "/services/HHR-Pro" && node.nodes) {
 						HHRPros[node.nodes[0].key] = JSON.parse(node.nodes[0].value);
 					}
 				});
@@ -58,13 +58,13 @@ function getHHRServices() {
 			watcher.on("change", function (action) {
 				switch (action.action) {
 					case 'set':
-						if (action.node.key === "/services/HHR-Pro") {
-							HHRPros[action.node.nodes[0].key] = JSON.parse(action.node.nodes[0].value);
+						if (action.node.key.match(/^\/services\/HHR-Pro/)) {
+							HHRPros[action.node.key] = JSON.parse(action.node.value);
 						}
 						break;
 					case 'delete':
-						if (action.node.key === "/services/HHR-Pro") {
-							delete HHRPros[action.node.nodes[0].key];
+						if (action.node.key.match(/^\/services\/HHR-Pro/)) {
+							delete HHRPros[action.node.key];
 						}
 						break;
 				}

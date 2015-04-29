@@ -2,7 +2,7 @@ var http = require("http"),
 	program = require("commander"),
 	soap = require("soap"),
 	RSVP = require("rsvp"),
-	promise = require("rsvp").Promise,
+	promise = RSVP.Promise,
 	Logger = require("logger"),
 	request = require("request"),
 	Etcd = require("node-etcd"),
@@ -49,7 +49,9 @@ function getHHRServices() {
 			if (resp.node.nodes && resp.node.nodes.length ) {
 				resp.node.nodes.forEach(function (node) {
 					if (node.key === "/services/HHR-Pro" && node.nodes) {
-						HHRPros[node.nodes[0].key] = JSON.parse(node.nodes[0].value);
+						node.nodes.forEach( function( hhrpro ) {
+							HHRPros[hhrpro.key] = JSON.parse(hhrpro.value);
+						});
 					}
 				});
 			}
@@ -96,20 +98,29 @@ var CheckPassword = {
 
 				function testPasswd(HHRPro, Authentifier, Password) {
 					return new promise(function (resolve, reject) {
+						logger.trace("testPasswd",HHRPro.dns);
 						request({
-							url    : "http://" + HHRPro.dns + "/api/checkpasswd",
+							url    : "http://" + HHRPro.ip + "/api/checkpasswd",
 							method : "POST",
 							headers: {"content-type": "text/plain"},
+							timeout: 1000,
 							body   : JSON.stringify({login: Authentifier, password: Password})
 						}, function (err, resp, body) {
 							if (err) {
+								logger.info(HHRPro.dns +" network error ");
 								logger.debug("resp checkpasswd err", err);
 								resolve({valid: false});
 							} else {
 								try {
 									var isvalid = JSON.parse(body);
+									if( isvalid.valid ) {
+										logger.info( "account is valid on ",HHRPro.dns );
+									} else {
+										logger.info( "account is not valid on ",HHRPro.dns );
+									}
 									resolve(isvalid);
 								} catch (err) {
+									logger.warning(" error bad json format");
 									resolve({valid: false});
 								}
 							}
@@ -121,15 +132,17 @@ var CheckPassword = {
 				for (var HHRPro in HHRPros) {
 					instances.push(HHRPros[HHRPro]);
 				}
+
+				logger.info( "authentifier ", soapReq.Authentifier );
 				var promises = instances.map(function (HHRPro) {
 					return testPasswd(HHRPro, soapReq.Authentifier, soapReq.Password);
 				});
 
 				var CheckPasswordOut = {IsValid: false, CheckPasswordUserInfo: ""};
-				// @todo valid is a function that validate the user:
 
 				RSVP.all(promises)
 					.then(function (results) {
+						// console.log( results );
 						var valid = false;
 						for (var i = 0; i < results.length; i++) {
 							valid = valid || results[i].valid;
@@ -143,6 +156,12 @@ var CheckPassword = {
 							CheckPasswordOut.IsValid = false;
 						}
 						logger.trace({CheckPasswordResponse: CheckPasswordOut});
+						cb({CheckPasswordResponse: CheckPasswordOut});
+					})
+					.catch( function(err) {
+						console.log("Error detected", err);
+						console.log(err.stack);
+						CheckPasswordOut.IsValid = false;
 						cb({CheckPasswordResponse: CheckPasswordOut});
 					});
 			}

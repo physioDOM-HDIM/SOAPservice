@@ -2,9 +2,14 @@
 % Fabrice le Coz <fabrice.lecoz@telecomsante.com>  
 % March, 2015
 
+__v0.0.17__
+
+  - Fix etcd watchdog : at start get all HHRPro instances
+  - sets the timeout to 1000ms to query all HHRPro instances 
+
 __v0.0.16__
 
-  - Fix etcf watchdog
+  - Fix etcd watchdog
   
 __v0.0.15__
 

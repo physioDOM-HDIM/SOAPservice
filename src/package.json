@@ -1,6 +1,7 @@
 {
   "name": "SOAPservice",
-  "version": "0.0.17",
+  "version": "0.0.18",
+  "license": "CC-BY-NC-4.0",
   "description": "wsdl checkpasswd soap service to use with IDS platform",
   "main": "SOAPservice.js",
   "scripts": {
@@ -16,9 +17,8 @@
   ],
   "repository": {
     "type": "git",
-    "url": "http://git.telecomsante.com/physiodom-hdim/SOAPservice"
+    "url": "https://github.com/physioDOM-HDIM/SOAPservice.git"
   },
-  "license": "Telecom Sante",
   "dependencies": {
     "commander": "^2.7.1",
     "logger": "file:logger-v1.1.0.tar.gz",

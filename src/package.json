@@ -1,6 +1,7 @@
 {
   "name": "SOAPservice",
   "version": "0.0.17",
+  "license": "CC-BY-NC-4.0",
   "description": "wsdl checkpasswd soap service to use with IDS platform",
   "main": "SOAPservice.js",
   "scripts": {

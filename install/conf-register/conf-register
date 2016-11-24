@@ -1,0 +1,63 @@
+#!/usr/bin/env node
+
+var Etcd = require('node-etcd'),
+    program = require('commander'),
+    fs = require('fs'),
+    pkg = require("./package.json"),
+    os = require('os');
+
+var conf = {};
+var IP = "";
+
+program
+        .version( pkg.version )
+        .option('-h, --host [value]','etcd server [172.17.42.1]','172.17.42.1')
+        .parse(process.argv);
+
+
+console.log( "etcd server : ", program.host );
+
+etcd = new Etcd( program.host, '4001' );
+
+function getIP() {
+	var interfaces = os.networkInterfaces();
+	var ip;
+	
+	for( interface in interfaces ) {
+		if ( interface !== "lo" ) {
+			interfaces[interface].forEach( function(addr) {
+				if( addr.family === 'IPv4' && addr.internal == false ) {
+					ip = addr.address;
+				}
+			});
+		}
+	}
+	if( IP !== ip ) {
+		IP = ip;
+		etcd.set('services/SOAPservice', JSON.stringify({ ip: ip }));
+	}
+}
+
+setInterval( function() {
+	getIP();
+}, 30000 );
+
+getIP();
+
+function rmService() {
+	etcd.del('services/SOAPservice', function() {
+		process.exit(0);
+	});
+}
+
+process.on('exit' , function() {
+	rmService();
+});
+
+process.on('SIGINT', function() {
+	rmService();
+});
+
+process.on('SIGTERM', function() {
+	rmService();
+});

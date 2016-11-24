@@ -2,25 +2,29 @@
 % Fabrice Le Coz  
 % February 2015
 
-This little site is used to control the login/password fill-up by the user on the IDS platform.
+This service is used to control the login/password fill-up by the user on the IDS platform. and so depends of the hosting platform.
  
 This site is requested through the IP given by the IDS platform ( VPN on test )
 
-So if the ip change the service must mutch this ip, to generate the correct wsdl.
+So if the ip change the service must match this ip, to generate the correct wsdl.
+
+![](physiodom.png)
 
 # Install
 
-install the project in `/home/http/SOAPservice`
+Create a config file named `config.json` in a directory that will be shared to the constainer.
 
-    git clone git@git.telecomsante.com:physiodom-hdim/SOAPservice.git /home/http/SOAPservice
+    {
+      "serverIP":"10.29.144.2"   <-- IP of the platform into the IDS network
+    }
 
-Create a config file in `/home/http/` using the `config.json.sample`
+The container need to connect to an etcd service, where HHR-Pro instances are registered.
 
-    cp /home/http/SOAPservice/config.json.sample /home/http/SOAPservice.json
+Then run the container :
 
-edit the file to set the correct IP, in dev mode the IP is the IP given by the VPN with the IDS platform.
-
-copy the init.d file and register the service, it will be better if the service starts before the HHR-pro instance
-
-    sudo cp /home/http/SOAPservice/install/SOAPservice /etc/init.d
-    sudo update-rc.d SOAPservice defaults 40
+    docker run -d --restart=always \
+           --name SOAPservice \
+           -v /opt/config/SOAP:/config \
+           -v /opt/logs/SOAP:/logs
+           --link etcd:etcd
+           SOAPservice:x.y.z

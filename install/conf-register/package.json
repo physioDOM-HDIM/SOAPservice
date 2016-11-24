@@ -1,0 +1,21 @@
+{
+  "name": "conf-register",
+  "version": "0.0.1",
+  "description": "register the physiodom instance to etcd",
+  "author": "Telecom Sante <tech@telecomsante.com>",
+  "contributors": [
+    { "name": "Fabrice Le Coz",  "email": "fabrice.lecoz@telecosmante.com"}
+  ],
+  "bin":"conf-register",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "commander": "^2.6.0",
+    "node-etcd": "^3.0.2",
+    "rsvp": "^3.0.16"
+  },
+  "preferGlobal": true,
+  "private": true,
+  "license": "ISC"
+}
